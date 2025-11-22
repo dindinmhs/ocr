@@ -1,64 +1,45 @@
 import cv2
-import pytesseract
-import os
+import easyocr
+import numpy as np
 
-# Gunakan path instalasi Tesseract yang proper
-# Jangan gunakan tesseract.exe di folder project
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-# Cek apakah path valid
-if not os.path.exists(pytesseract.pytesseract.tesseract_cmd):
-    print("ERROR: Tesseract tidak ditemukan!")
-    print("Install Tesseract dari: https://github.com/UB-Mannheim/tesseract/wiki")
-    print("Pilih 'tesseract-ocr-w64-setup-5.3.3.20231005.exe' atau versi terbaru")
-    exit(1)
+# Inisialisasi EasyOCR (hanya sekali)
+print("Loading EasyOCR...")
+reader = easyocr.Reader(['en'], gpu=True)  # Ubah gpu=True jika ada NVIDIA GPU
 
 # Inisialisasi kamera
 cap = cv2.VideoCapture(0)
-
-# Atur resolusi kamera (opsional)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
 print("Tekan 'q' untuk keluar")
-print("Tekan 's' untuk OCR dan tampilkan teks")
+print("Tekan 's' untuk OCR")
 
 while True:
     ret, frame = cap.read()
     
     if not ret:
-        print("Gagal mengambil frame dari kamera")
+        print("Gagal mengambil frame")
         break
     
-    # Preprocessing untuk meningkatkan akurasi OCR
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    cv2.imshow('EasyOCR', frame)
     
-    # Tambahkan threshold untuk meningkatkan kontras
-    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
-    
-    # Tampilkan frame asli dan hasil preprocessing
-    cv2.imshow('OCR Realtime - Original', frame)
-    cv2.imshow('OCR Realtime - Processed', thresh)
-    
-    # Kontrol keyboard
     key = cv2.waitKey(1) & 0xFF
     
     if key == ord('q'):
         break
     elif key == ord('s'):
-        # Trigger OCR saat tekan 's'
         print("\n[Processing OCR...]")
-        try:
-            text = pytesseract.image_to_string(thresh, lang='eng')
-            print("=== HASIL OCR ===")
-            if text.strip():
-                print(text)
-            else:
-                print("Tidak ada teks terdeteksi")
-            print("=================\n")
-        except Exception as e:
-            print(f"OCR Error: {e}\n")
+        
+        # OCR otomatis tanpa preprocessing
+        results = reader.readtext(frame)
+        
+        print("=== HASIL OCR ===")
+        if results:
+            for (bbox, text, prob) in results:
+                print(f"{text}")
+        else:
+            print("Tidak ada teks terdeteksi")
+        print("=================\n")
 
-# Cleanup
 cap.release()
 cv2.destroyAllWindows()
